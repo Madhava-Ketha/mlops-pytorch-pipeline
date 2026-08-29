@@ -28,16 +28,16 @@ spec:
       containers:
       - name: pytorch-trainer
         image: mlops-train:v1
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Never
         resources:
           requests:
-            cpu: "4"
-            memory: "8Gi"
-            nvidia.com/gpu: 1  # Bonus: GPU allocation
+            cpu: "3"
+            memory: "5Gi"
+            #nvidia.com/gpu: 1  # Bonus: GPU allocation
           limits:
-            cpu: "4"
-            memory: "8Gi"
-            nvidia.com/gpu: 1
+            cpu: "3"
+            memory: "5Gi"
+            #nvidia.com/gpu: 1
         volumeMounts:
         - name: config-volume
           mountPath: /app/configs
