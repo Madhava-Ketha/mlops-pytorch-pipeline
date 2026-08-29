@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+venv/
+data/
+checkpoints/
+*.pt
+*.pth
+.DS_Store
+assignment.pdf
+nvidia-device-plugin.yaml
+test_request.py
+test_image.jpg
