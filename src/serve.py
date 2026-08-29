@@ -22,7 +22,6 @@ transform = get_transforms(train=False)
 
 
 def load_trained_model():
-    global model
     checkpoint_dir = os.getenv("CHECKPOINT_DIR", "/app/checkpoints")
     model_name = os.getenv("MODEL_NAME", "classifier_v1.pt")
     model_path = Path(checkpoint_dir) / model_name
@@ -53,7 +52,6 @@ def startup_event():
 
 @app.get("/health", status_code=status.HTTP_200_OK)
 def health_check():
-    global model
     if model is None:
         if not load_trained_model():
             raise HTTPException(
@@ -65,7 +63,6 @@ def health_check():
 
 @app.post("/predict")
 async def predict(image: UploadFile = File(...)) -> Dict:
-    global model
     if model is None and not load_trained_model():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

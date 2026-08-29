@@ -1,0 +1,141 @@
+(ml-env) PS D:\Madhava\mlops-pytorch-pipeline> kubectl get jobs -n ml-training
+NAME                   STATUS    COMPLETIONS   DURATION   AGE
+pytorch-training-job   Running   0/1           3m7s       3m7s
+(ml-env) PS D:\Madhava\mlops-pytorch-pipeline> kubectl get jobs -n ml-training
+NAME                   STATUS    COMPLETIONS   DURATION   AGE
+pytorch-training-job   Running   0/1           4m15s      4m15s
+(ml-env) PS D:\Madhava\mlops-pytorch-pipeline> kubectl delete job pytorch-training-job -n ml-training
+job.batch "pytorch-training-job" deleted from ml-training namespace
+(ml-env) PS D:\Madhava\mlops-pytorch-pipeline> kubectl apply -f k8s/configmap.yaml
+configmap/training-config configured
+(ml-env) PS D:\Madhava\mlops-pytorch-pipeline> kubectl apply -f configmap.yaml
+error: the path "configmap.yaml" does not exist
+(ml-env) PS D:\Madhava\mlops-pytorch-pipeline> kubectl apply -f k8s/pvc.yaml
+persistentvolumeclaim/ml-storage-pvc unchanged
+(ml-env) PS D:\Madhava\mlops-pytorch-pipeline> kubectl apply -f k8s/training-job.yaml
+persistentvolumeclaim/training-data-pvc unchanged
+job.batch/pytorch-training-job created
+(ml-env) PS D:\Madhava\mlops-pytorch-pipeline> kubectl get jobs -n ml-training
+NAME                   STATUS    COMPLETIONS   DURATION   AGE
+pytorch-training-job   Running   0/1           23s        23s
+(ml-env) PS D:\Madhava\mlops-pytorch-pipeline> kubectl logs job/pytorch-training-job -n ml-training
+Downloading: "https://download.pytorch.org/models/resnet18-f37072fd.pth" to /root/.cache/torch/hub/checkpoints/resnet18-f37072fd.pth
+100.0%
+Files already downloaded and verified
+Files already downloaded and verified
+(ml-env) PS D:\Madhava\mlops-pytorch-pipeline> kubectl get jobs -n ml-training
+NAME                   STATUS    COMPLETIONS   DURATION   AGE
+pytorch-training-job   Running   0/1           53s        53s
+(ml-env) PS D:\Madhava\mlops-pytorch-pipeline> kubectl logs -f job/pytorch-training-job -n ml-training
+Downloading: "https://download.pytorch.org/models/resnet18-f37072fd.pth" to /root/.cache/torch/hub/checkpoints/resnet18-f37072fd.pth
+100.0%
+Files already downloaded and verified
+Files already downloaded and verified
+(ml-env) PS D:\Madhava\mlops-pytorch-pipeline> kubectl get pods -n ml-training
+NAME                         READY   STATUS    RESTARTS   AGE
+pytorch-training-job-r6n45   1/1     Running   0          89s
+(ml-env) PS D:\Madhava\mlops-pytorch-pipeline> kubectl apply -f k8s/training-job.yaml --validate=false
+persistentvolumeclaim/training-data-pvc unchanged
+job.batch/pytorch-training-job unchanged
+(ml-env) PS D:\Madhava\mlops-pytorch-pipeline> kubectl get pods -n ml-training
+NAME                         READY   STATUS    RESTARTS   AGE
+pytorch-training-job-r6n45   1/1     Running   0          114s
+(ml-env) PS D:\Madhava\mlops-pytorch-pipeline> kubectl logs -f job/pytorch-training-job -n ml-training
+Downloading: "https://download.pytorch.org/models/resnet18-f37072fd.pth" to /root/.cache/torch/hub/checkpoints/resnet18-f37072fd.pth
+100.0%
+Files already downloaded and verified
+Files already downloaded and verified
+{"epoch": 1, "train_loss": 0.866, "train_accuracy": 0.7026, "val_loss": 0.643, "val_accuracy": 0.7781}
+{"event": "checkpoint_saved", "path": "/app/checkpoints/classifier_v1.pt"}
+{"event": "training_complete", "best_val_loss": 0.643}
+(ml-env) PS D:\Madhava\mlops-pytorch-pipeline> docker build -f docker/Dockerfile.serve -t mlops-serve:v1 .
+[+] Building 224.5s (12/12) FINISHED                                                                     docker:default
+ => [internal] load build definition from Dockerfile.serve                                                         0.0s
+ => => transferring dockerfile: 752B                                                                               0.0s
+ => [internal] load metadata for docker.io/library/python:3.11-slim                                                1.4s
+ => [internal] load .dockerignore                                                                                  0.0s
+ => => transferring context: 2B                                                                                    0.0s
+ => [1/7] FROM docker.io/library/python:3.11-slim@sha256:1042b61448fef4ba92d16a8c7eb4996d027568ce64792a7877fd8851  0.0s
+ => [internal] load build context                                                                                  0.0s
+ => => transferring context: 437B                                                                                  0.0s
+ => CACHED [2/7] WORKDIR /app                                                                                      0.0s
+ => [3/7] RUN apt-get update && apt-get install -y --no-install-recommends curl     && rm -rf /var/lib/apt/lists/  5.9s
+ => [4/7] COPY requirements/serve.txt .                                                                            0.0s
+ => [5/7] RUN pip install --no-cache-dir -r serve.txt                                                            197.8s
+ => [6/7] COPY src/ ./src/                                                                                         0.1s
+ => [7/7] RUN useradd -m -u 1001 appuser &&     mkdir -p /app/checkpoints &&     chown -R appuser:appuser /app     0.6s
+ => exporting to image                                                                                            18.3s
+ => => exporting layers                                                                                           18.3s
+ => => writing image sha256:4970da5dcd49c64c3b7297de7bdf04aa3de2337df9418c78dde3d8d2a58a15bc                       0.0s
+ => => naming to docker.io/library/mlops-serve:v1                                                                  0.0s
+
+View build details: docker-desktop://dashboard/build/default/default/r3mx5slzdohdppwmewll8puk1
+(ml-env) PS D:\Madhava\mlops-pytorch-pipeline> minikube image load mlops-serve:v1
+(ml-env) PS D:\Madhava\mlops-pytorch-pipeline> kubectl apply -f k8s/serving-deployment.yaml --validate=false
+deployment.apps/model-serving created
+(ml-env) PS D:\Madhava\mlops-pytorch-pipeline> kubectl apply -f k8s/serving-service.yaml --validate=false
+service/model-serving created
+(ml-env) PS D:\Madhava\mlops-pytorch-pipeline> kubectl get pods -n ml-training -w
+NAME                            READY   STATUS      RESTARTS   AGE
+model-serving-55bbfcbbc-mj4hn   0/1     Running     0          12s
+model-serving-55bbfcbbc-mzfk9   0/1     Running     0          12s
+pytorch-training-job-r6n45      0/1     Completed   0          50m
+model-serving-55bbfcbbc-mzfk9   0/1     Running     1 (1s ago)   32s
+model-serving-55bbfcbbc-mj4hn   0/1     Running     1 (1s ago)   32s
+model-serving-55bbfcbbc-mzfk9   0/1     Running     2 (0s ago)   61s
+model-serving-55bbfcbbc-mj4hn   0/1     Running     2 (0s ago)   61s
+model-serving-55bbfcbbc-mj4hn   0/1     Running     3 (0s ago)   91s
+model-serving-55bbfcbbc-mzfk9   0/1     Running     3 (0s ago)   91s
+model-serving-55bbfcbbc-mzfk9   0/1     Running     4 (1s ago)   2m2s
+model-serving-55bbfcbbc-mj4hn   0/1     Running     4 (1s ago)   2m2s
+model-serving-55bbfcbbc-mj4hn   0/1     CrashLoopBackOff   4 (0s ago)   2m31s
+model-serving-55bbfcbbc-mzfk9   0/1     CrashLoopBackOff   4 (0s ago)   2m31s
+model-serving-55bbfcbbc-mj4hn   0/1     Running            5 (44s ago)   3m15s
+model-serving-55bbfcbbc-mzfk9   0/1     Running            5 (46s ago)   3m17s
+model-serving-55bbfcbbc-mzfk9   0/1     CrashLoopBackOff   5 (0s ago)    3m41s
+model-serving-55bbfcbbc-mj4hn   0/1     CrashLoopBackOff   5 (0s ago)    3m41s
+(ml-env) PS D:\Madhava\mlops-pytorch-pipeline> kubectl apply -f k8s/serving-deployment.yaml --validate=false
+deployment.apps/model-serving configured
+(ml-env) PS D:\Madhava\mlops-pytorch-pipeline> kubectl run check-pvc --rm -it --image=alpine --namespace=ml-training --overrides='{
+>>   "spec": {
+>>     "containers": [{
+>>       "name": "checker",
+>>       "image": "alpine",
+>>       "command": ["ls", "-la", "/app/checkpoints"],
+>>       "volumeMounts": [{
+>>         "name": "data-volume",
+>>         "mountPath": "/app/checkpoints",
+>>         "subPath": "checkpoints"
+>>       }]
+>>     }],
+>>     "volumes": [{
+>>       "name": "data-volume",
+>>       "persistentVolumeClaim": {
+>>         "claimName": "training-data-pvc"
+>>       }
+>>     }]
+>>   }
+>> }'
+error: Invalid JSON Patch
+(ml-env) PS D:\Madhava\mlops-pytorch-pipeline> kubectl get pods -n ml-training -w
+NAME                             READY   STATUS      RESTARTS   AGE
+model-serving-6d4c787dd9-7w5z7   1/1     Running     0          50s
+model-serving-6d4c787dd9-snflh   1/1     Running     0          67s
+pytorch-training-job-r6n45       0/1     Completed   0          55m
+(ml-env) PS D:\Madhava\mlops-pytorch-pipeline> kubectl port-forward svc/model-serving 8080:80 -n ml-training
+Forwarding from 127.0.0.1:8080 -> 8080
+Forwarding from [::1]:8080 -> 8080
+Handling connection for 8080
+Handling connection for 8080
+Handling connection for 8080
+Handling connection for 8080
+
+2nd terminal Output
+
+PS D:\Madhava\mlops-pytorch-pipeline> kubectl get pods -n ml-training -w
+NAME                             READY   STATUS      RESTARTS   AGE
+model-serving-6d4c787dd9-7w5z7   1/1     Running     0          5m35s
+model-serving-6d4c787dd9-snflh   1/1     Running     0          5m52s
+pytorch-training-job-r6n45       0/1     Completed   0          60m
+PS D:\Madhava\mlops-pytorch-pipeline> python -c "import requests; r = requests.post('http://localhost:8080/predict', files={'image': open('test_dog.jpg', 'rb')}); print(r.json())"
+{'prediction': 3, 'class_name': 'cat', 'confidence': 0.8106, 'probabilities': {'airplane': 0.0429, 'automobile': 0.0001, 'bird': 0.0266, 'cat': 0.8106, 'deer': 0.0072, 'dog': 0.0996, 'frog': 0.0033, 'horse': 0.0083, 'ship': 0.0008, 'truck': 0.0006}}
